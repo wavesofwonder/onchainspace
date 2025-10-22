@@ -16,7 +16,7 @@ Current dashboards fail this use case because they are:
 | Existing Option | Issue |
 |----------------|------|
 | Trading dashboards (DEXTools, DexScreener) | Too noisy and hype-driven. |
-| Institutional analytics tools (Nansen, Arkham) | Too complex and action-heavy for casual surveillance. |
+| Institutional analytics tools (Nansen, Arkham) | Too complex and action-heavy for casual monitoring. |
 | Portfolio trackers | Require multiple clicks and display irrelevant metrics. |
 
 There is **no lightweight, homepage-style dashboard** built to provide crypto awareness with **zero cognitive overhead**.
@@ -91,8 +91,6 @@ There is **no lightweight, homepage-style dashboard** built to provide crypto aw
 
 ## 9. Experience Components
 
-| Component | Purpose |
-|----------|--------|
 | Component | Purpose |
 |----------|--------|
 | **Greeting** | Anchor user with identity + time |
