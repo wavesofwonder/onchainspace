@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
+
+import { WagmiProvider } from 'wagmi'
+import { wagmiConfig } from './lib/wagmi'
+import { TransactionProvider } from 'ethereum-identity-kit'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
 import './App.css'
+
+const queryClient = new QueryClient()
 
 function DigitalClock() {
   const [time, setTime] = useState(new Date())
@@ -54,9 +62,13 @@ function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <>
-      <DigitalClock />
-    </>
+    <QueryClientProvider client={queryClient}>
+    <WagmiProvider config={wagmiConfig}>
+      <TransactionProvider>
+        <DigitalClock />
+      </TransactionProvider>
+    </WagmiProvider>
+  </QueryClientProvider>
   )
 }
 
