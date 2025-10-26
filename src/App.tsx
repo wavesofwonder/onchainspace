@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { WagmiProvider, useAccount } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { TransactionProvider, SignInWithEthereum } from 'ethereum-identity-kit'
+import { Avatar, TransactionProvider, SignInWithEthereum, useProfileDetails, ProfileCard } from 'ethereum-identity-kit'
 import { createAppKit, useDisconnect } from '@reown/appkit/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { mainnet, arbitrum, base } from '@reown/appkit/networks'
@@ -9,6 +9,40 @@ import { projectId } from './config/reown'
 import './App.css'
 
 const queryClient = new QueryClient()
+
+// Auth Context
+const AuthContext = createContext<{
+  authenticatedAddress: string | null
+  setAuthenticatedAddress: (address: string | null) => void
+}>({ 
+  authenticatedAddress: null, 
+  setAuthenticatedAddress: () => {} 
+})
+
+// Auth Provider
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authenticatedAddress, setAuthenticatedAddress] = useState<string | null>(
+    () => localStorage.getItem('authenticatedAddress')
+  )
+  
+  // Sync with localStorage when it changes
+  useEffect(() => {
+    if (authenticatedAddress) {
+      localStorage.setItem('authenticatedAddress', authenticatedAddress)
+    } else {
+      localStorage.removeItem('authenticatedAddress')
+    }
+  }, [authenticatedAddress])
+  
+  return (
+    <AuthContext.Provider value={{ authenticatedAddress, setAuthenticatedAddress }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+// Hook to use Auth Context
+const useAuth = () => useContext(AuthContext)
 
 // Reown AppKit Configuration
 const metadata = {
@@ -62,24 +96,89 @@ function DigitalClock() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '100vh',
+      paddingTop: '20vh',
       fontFamily: 'monospace',
       fontSize: '4rem',
       fontWeight: 'bold',
       color: '#333',
       textAlign: 'center'
     }}>
-      <div style={{ marginBottom: '1rem' }}>
+      <div>
         {formatTime(time)}
       </div>
-      <div style={{
-        fontSize: '1.5rem',
-        fontWeight: 'normal',
-        color: '#666'
-      }}>
-        gm vitalik.eth
-      </div>
     </div>
+  )
+}
+
+// Profile Card Component
+function ProfileCardAvatar() {
+  const { address } = useAccount()
+  const { authenticatedAddress } = useAuth()
+  const [showProfileCard, setShowProfileCard] = useState(false)
+  
+  const displayAddress = authenticatedAddress || address
+  const { ens } = useProfileDetails({ addressOrName: displayAddress })
+  
+  if (!displayAddress) {
+    return null // Don't show anything if not connected
+  }
+  
+  return (
+    <>
+      <div 
+        style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+          cursor: 'pointer'
+        }}
+        onClick={() => setShowProfileCard(!showProfileCard)}
+      >
+        <Avatar 
+          address={displayAddress} 
+          name={ens?.name}
+          style={{
+            width: '48px',
+            height: '48px'
+          }}
+        />
+      </div>
+      
+      {showProfileCard && (
+        <>
+          {/* Backdrop */}
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 1001
+            }}
+            onClick={() => setShowProfileCard(false)}
+          />
+          
+          {/* Profile Card Modal */}
+          <div style={{
+            position: 'fixed',
+            top: '80px',
+            right: '20px',
+            zIndex: 1002,
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            maxWidth: '400px',
+            maxHeight: '80vh',
+            overflow: 'auto'
+          }}>
+            <ProfileCard addressOrName={displayAddress} />
+          </div>
+        </>
+      )}
+    </>
   )
 }
 
@@ -87,7 +186,11 @@ function DigitalClock() {
 function AuthFlow() {
   const { address, isConnected } = useAccount()
   const { disconnect } = useDisconnect()
+  const { authenticatedAddress, setAuthenticatedAddress } = useAuth()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  
+  const displayAddress = authenticatedAddress || address
+  const { ens, detailsLoading } = useProfileDetails({ addressOrName: displayAddress })
 
   // Check authentication status on mount and when wallet connects
   useEffect(() => {
@@ -140,7 +243,7 @@ function AuthFlow() {
       
       if (isValid) {
         // Store authentication state
-        localStorage.setItem('authenticatedAddress', messageAddress)
+        setAuthenticatedAddress(messageAddress)
         localStorage.setItem('authenticatedMessage', message)
         console.log('Signature verified successfully!')
         setIsAuthenticated(true)
@@ -164,7 +267,7 @@ function AuthFlow() {
       console.log('Starting sign out process...')
       
       // Clear authentication state
-      localStorage.removeItem('authenticatedAddress')
+      setAuthenticatedAddress(null)
       localStorage.removeItem('authenticatedMessage')
       setIsAuthenticated(false)
       
@@ -179,10 +282,24 @@ function AuthFlow() {
 
   // Step 3: Authenticated Dashboard
   if (isAuthenticated) {
+    const displayName = ens?.name || displayAddress
     return (
-      <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-        <h2>Welcome to OnchainSpace!</h2>
-        <p>You're successfully authenticated as: {address}</p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontFamily: 'monospace',
+          fontSize: '3rem',
+          fontWeight: 'bold',
+          color: '#666',
+          marginTop: '2rem'
+        }}>
+          gm {displayName}
+        </div>
         <button 
           onClick={handleSignOut}
           style={{
@@ -192,7 +309,7 @@ function AuthFlow() {
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',
-            marginTop: '1rem'
+            marginTop: '2rem'
           }}
         >
           Sign Out
@@ -236,12 +353,15 @@ function App() {
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <TransactionProvider>
-          <div>
-            <DigitalClock />
-            <AuthFlow />
-          </div>
-        </TransactionProvider>
+        <AuthProvider>
+          <TransactionProvider>
+            <div>
+              <ProfileCardAvatar />
+              <DigitalClock />
+              <AuthFlow />
+            </div>
+          </TransactionProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
