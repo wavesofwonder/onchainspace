@@ -6,6 +6,7 @@ import { createAppKit, useDisconnect } from '@reown/appkit/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { mainnet, arbitrum, base } from '@reown/appkit/networks'
 import { projectId } from './config/reown'
+import { TransactionPopupProvider, useTransactionPopup } from '@blockscout/app-sdk'
 import './App.css'
 
 const queryClient = new QueryClient()
@@ -115,6 +116,7 @@ function ProfileCardAvatar() {
   const { address } = useAccount()
   const { authenticatedAddress } = useAuth()
   const [showProfileCard, setShowProfileCard] = useState(false)
+  const { openPopup } = useTransactionPopup()
   
   const displayAddress = authenticatedAddress || address
   const { ens } = useProfileDetails({ addressOrName: displayAddress })
@@ -175,6 +177,30 @@ function ProfileCardAvatar() {
             overflow: 'auto'
           }}>
             <ProfileCard addressOrName={displayAddress} />
+            
+            <div style={{ padding: '0 20px 20px 20px' }}>
+              <button
+                onClick={() => {
+                  openPopup({ chainId: '1', address: displayAddress })
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  backgroundColor: '#4F46E5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338CA'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4F46E5'}
+              >
+                View Recent Transactions
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -354,13 +380,15 @@ function App() {
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <TransactionProvider>
-            <div>
-              <ProfileCardAvatar />
-              <DigitalClock />
-              <AuthFlow />
-            </div>
-          </TransactionProvider>
+          <TransactionPopupProvider>
+            <TransactionProvider>
+              <div>
+                <ProfileCardAvatar />
+                <DigitalClock />
+                <AuthFlow />
+              </div>
+            </TransactionProvider>
+          </TransactionPopupProvider>
         </AuthProvider>
       </QueryClientProvider>
     </WagmiProvider>
